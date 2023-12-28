@@ -1,9 +1,3 @@
-
-# https://github.com/davudk/OpenGL-TileMap-Demos/blob/master/Renderers/GeometryRenderer.cs
-
-# https://learnopengl.com/Getting-started/Coordinate-Systems
-
-
 import ctypes
 import os
 from abc import ABC

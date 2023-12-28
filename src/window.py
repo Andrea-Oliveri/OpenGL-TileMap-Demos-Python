@@ -3,7 +3,7 @@
 import pyglet
 
 from src.tilemap import TileMap
-from src.renderer import VertexBufferedRenderer, GeomBufferedRenderer, VertexBufferedRendererPyglet
+from src.renderer import VertexBufferedRenderer, GeomBufferedRenderer
 
 from src.constants import WINDOW_MINIMUM_SIZE
 
