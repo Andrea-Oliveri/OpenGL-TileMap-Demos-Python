@@ -10,7 +10,16 @@ Vertex-buffered rendering and Geometry Shader Rendering in particular are implem
 
 
 ## Topline Profiler Results
-TO COMPLETE
+On a simple benchmark with a TileMap composed of 36 rows and 28 columns, the following results were obtained.
+Reported are the cumulative time, per call, in seconds:
+
+| **Renderer**      | **draw()** | **recalculate()** |
+|-------------------|------------|-------------------|
+| _Geometry Shader_ | 0.0002031  | 0.0001807         |
+| _Vertex-Buffered_ | 0.0001621  | 0.006053          |
+| _Instantaneous_   | 0.2491     | 0                 |
+
+
 
 
 ## References

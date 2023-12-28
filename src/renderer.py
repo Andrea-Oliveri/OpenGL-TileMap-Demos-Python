@@ -1,10 +1,12 @@
 import ctypes
 import os
 from abc import ABC
+from turtle import width
 
 import pyglet
 
-from src.constants import (TEXTURE_N_TILES_PER_ROW, 
+from src.constants import (TEXTURE_TILE_SIZE_PX,
+                           TEXTURE_N_TILES_PER_ROW, 
                            TEXTURE_TILE_SIZE_NORMALIZED, 
                            TEXTURE_TILE_PADDING, 
                            TILEMAP_N_ROWS, 
@@ -303,3 +305,32 @@ class GeomBufferedRenderer(_AbstractRenderer):
         
         pyglet.gl.glEnableVertexAttribArray(0)
         pyglet.gl.glVertexAttribIPointer(0, 1, pyglet.gl.GL_UNSIGNED_INT, ctypes.sizeof(ctypes.c_uint32), 0)
+
+
+
+class NaiveInstantaneousRenderer(_AbstractRenderer):
+
+    def __init__(self, tilemap):
+        self._tilemap = tilemap
+        texture = self._tilemap._texture
+        self._image_grid = pyglet.image.ImageGrid(texture, texture.height // TEXTURE_TILE_SIZE_PX, texture.width // TEXTURE_TILE_SIZE_PX)
+        self._image_grid = pyglet.image.TextureGrid(self._image_grid)
+
+        for im in self._image_grid:
+            im.anchor_x = 0
+            im.anchor_y = im.height        
+
+    def recalculate(self):
+        return
+
+    def draw(self):
+
+        for x in range(TILEMAP_N_COLS):
+            for y in range(TILEMAP_N_ROWS):
+                tile = self._tilemap[y, x]
+                image_tile = self._image_grid[tile]
+
+                x_ = x * TEXTURE_TILE_SIZE_PX
+                y_ = (y + 1) * TEXTURE_TILE_SIZE_PX
+
+                image_tile.blit(x_, y_, width = TEXTURE_TILE_SIZE_PX, height = TEXTURE_TILE_SIZE_PX)

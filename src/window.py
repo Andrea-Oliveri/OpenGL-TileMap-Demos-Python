@@ -3,7 +3,7 @@
 import pyglet
 
 from src.tilemap import TileMap
-from src.renderer import VertexBufferedRenderer, GeomBufferedRenderer
+from src.renderer import VertexBufferedRenderer, GeomBufferedRenderer, NaiveInstantaneousRenderer
 
 from src.constants import WINDOW_MINIMUM_SIZE
 
@@ -55,7 +55,7 @@ class Window(pyglet.window.Window):
             self._renderer.recalculate()
             return
         
-        cls_list = [GeomBufferedRenderer, VertexBufferedRenderer]
+        cls_list = [GeomBufferedRenderer, VertexBufferedRenderer, NaiveInstantaneousRenderer]
         i, = [idx for idx, e in enumerate(cls_list) if isinstance(self._renderer, e)]
         i = (i+1) % len(cls_list)
         
@@ -71,7 +71,7 @@ class Window(pyglet.window.Window):
         self.clear()
         self._renderer.draw()
 
-        # self._draw_fps_counter()
+        self._draw_fps_counter()
 
 
     def _draw_fps_counter(self):
