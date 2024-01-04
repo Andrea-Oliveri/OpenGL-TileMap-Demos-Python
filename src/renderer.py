@@ -1,7 +1,6 @@
 import ctypes
 import os
-from abc import ABC
-from turtle import width
+from abc import ABC, abstractmethod
 
 import pyglet
 
@@ -14,11 +13,76 @@ from src.constants import (TEXTURE_TILE_SIZE_PX,
                            SHADERS_FOLDER)
 
 
+
 class _AbstractRenderer(ABC):
+    @abstractmethod
+    def __init__(self, tilemap):
+        raise NotImplementedError
+
+    @abstractmethod
+    def recalculate(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def draw(self):
+        raise NotImplementedError
+
+    def _get_projection_matrix(self):
+        # Input vertex coordinates have origin on the top left with x increasing as we go right and y increasing as we go down.
+        # Each tile has a width and a height of 1.
+
+        # Model matrix so that origin is at the center of the tilemap.
+        # Tilemap x_range = (- TILEMAP_N_COLS / 2, TILEMAP_N_COLS / 2), y_range = (- TILEMAP_N_ROWS / 2, TILEMAP_N_ROWS / 2)
+        model_matrix = pyglet.math.Mat4.from_translation(pyglet.math.Vec3(-TILEMAP_N_COLS / 2, -TILEMAP_N_ROWS / 2, 0))
+
+        # View matrix should not change anything.
+        view_matrix  = pyglet.math.Mat4()
+        
+        # Projection matrix scales so that tilemap fits tightly into clip-space: ranging from -1 to +1 in each coordinate.
+        proj_matrix  = pyglet.math.Mat4.from_scale(pyglet.math.Vec3(2 / TILEMAP_N_COLS, 2 / TILEMAP_N_ROWS, 0))
+        
+        return proj_matrix @ view_matrix @ model_matrix
+
+
+
+
+class NaiveInstantaneousRenderer(_AbstractRenderer):
 
     def __init__(self, tilemap):
         self._tilemap = tilemap
-        self._texture_id = tilemap.texture_id
+
+        texture = tilemap.texture
+        self._image_grid = pyglet.image.ImageGrid(texture, texture.height // TEXTURE_TILE_SIZE_PX, texture.width // TEXTURE_TILE_SIZE_PX)
+        self._image_grid = pyglet.image.TextureGrid(self._image_grid)
+
+        for im in self._image_grid:
+            im.anchor_x = 0
+            im.anchor_y = im.height        
+
+    def recalculate(self):
+        return
+
+    def draw(self):
+
+        for x in range(TILEMAP_N_COLS):
+            for y in range(TILEMAP_N_ROWS):
+                tile = self._tilemap[y, x]
+                image_tile = self._image_grid[tile]
+
+                x_ = x * TEXTURE_TILE_SIZE_PX
+                y_ = (y + 1) * TEXTURE_TILE_SIZE_PX
+
+                image_tile.blit(x_, y_, width = TEXTURE_TILE_SIZE_PX, height = TEXTURE_TILE_SIZE_PX)
+
+
+
+
+
+class _OpenGLRenderer(_AbstractRenderer, ABC):
+
+    def __init__(self, tilemap):
+        self._tilemap = tilemap
+        self._texture_id = tilemap.texture.id
 
         self._shader_handle = None
         self._vbo_handle = None
@@ -28,15 +92,19 @@ class _AbstractRenderer(ABC):
         self._allocate_vbo_vao()
         self.recalculate()
 
+    @abstractmethod
     def _create_shader(self):
         raise NotImplementedError
 
+    @abstractmethod
     def draw(self):
         raise NotImplementedError
 
+    @abstractmethod
     def _update_vbo(self):
         raise NotImplementedError
 
+    @abstractmethod
     def _update_vao(self):
         raise NotImplementedError
 
@@ -108,22 +176,6 @@ class _AbstractRenderer(ABC):
             values = ctype_type(values)
 
         return location, values
-
-    def _get_projection_matrix(self):
-        # Input vertex coordinates have origin on the top left with x increasing as we go right and y increasing as we go down.
-        # Each tile has a width and a height of 1.
-
-        # Model matrix so that origin is at the center of the tilemap.
-        # Tilemap x_range = (- TILEMAP_N_COLS / 2, TILEMAP_N_COLS / 2), y_range = (- TILEMAP_N_ROWS / 2, TILEMAP_N_ROWS / 2)
-        model_matrix = pyglet.math.Mat4.from_translation(pyglet.math.Vec3(-TILEMAP_N_COLS / 2, -TILEMAP_N_ROWS / 2, 0))
-
-        # View matrix should not change anything.
-        view_matrix  = pyglet.math.Mat4()
-        
-        # Projection matrix scales so that tilemap fits tightly into clip-space: ranging from -1 to +1 in each coordinate.
-        proj_matrix  = pyglet.math.Mat4.from_scale(pyglet.math.Vec3(2 / TILEMAP_N_COLS, 2 / TILEMAP_N_ROWS, 0))
-        
-        return proj_matrix @ view_matrix @ model_matrix
     
     def __del__(self):
         try:
@@ -138,7 +190,8 @@ class _AbstractRenderer(ABC):
 
 
 
-class VertexBufferedRenderer(_AbstractRenderer):
+
+class VertexBufferedRenderer(_OpenGLRenderer):
 
     def _create_shader(self):
         vert_source = open(os.path.join(SHADERS_FOLDER, 'VertexBufferedRenderer.vert')).read()
@@ -257,15 +310,18 @@ class VertexBufferedRenderer(_AbstractRenderer):
                                         ctypes.sizeof(ctypes.c_float) * n_coords_vertex_position) # Offset by the number of elements in vertex position (previous attribute)
         
 
-class GeomBufferedRenderer(_AbstractRenderer):
+
+
+
+class GeomBufferedRenderer(_OpenGLRenderer):
 
     def _create_shader(self):
         vert_source = open(os.path.join(SHADERS_FOLDER, 'GeometryShaderRenderer.vert')).read()
         frag_source = open(os.path.join(SHADERS_FOLDER, 'GeometryShaderRenderer.frag')).read()
         geom_source = open(os.path.join(SHADERS_FOLDER, 'GeometryShaderRenderer.geom')).read() \
-                          .replace('{TEXTURE_N_TILES_PER_ROW}'     , str(TEXTURE_N_TILES_PER_ROW)) \
-                          .replace('{TEXTURE_TILE_SIZE_NORMALIZED}', str(TEXTURE_TILE_SIZE_NORMALIZED)) \
-                          .replace('{TEXTURE_TILE_PADDING}'        , str(TEXTURE_TILE_PADDING))
+                          .replace('{TEXTURE_N_TILES_PER_ROW}'     , f'{TEXTURE_N_TILES_PER_ROW}u') \
+                          .replace('{TEXTURE_TILE_SIZE_NORMALIZED}', f'{TEXTURE_TILE_SIZE_NORMALIZED}') \
+                          .replace('{TEXTURE_TILE_PADDING}'        , f'{TEXTURE_TILE_PADDING}')
 
         self._compile_shader_program([(vert_source, pyglet.gl.GL_VERTEX_SHADER),
                                       (frag_source, pyglet.gl.GL_FRAGMENT_SHADER),
@@ -308,29 +364,111 @@ class GeomBufferedRenderer(_AbstractRenderer):
 
 
 
-class NaiveInstantaneousRenderer(_AbstractRenderer):
 
+
+class Pyglet_VertexBufferedRenderer(_AbstractRenderer):
     def __init__(self, tilemap):
         self._tilemap = tilemap
-        texture = self._tilemap._texture
-        self._image_grid = pyglet.image.ImageGrid(texture, texture.height // TEXTURE_TILE_SIZE_PX, texture.width // TEXTURE_TILE_SIZE_PX)
-        self._image_grid = pyglet.image.TextureGrid(self._image_grid)
+        self._texture_id = tilemap.texture.id
 
-        for im in self._image_grid:
-            im.anchor_x = 0
-            im.anchor_y = im.height        
+        self._shader_program = None
+        self._vertex_list = None
+
+        self._create_shader()
+        self._allocate_vbo_vao()
+        self.recalculate()
+        
+
+    def _create_shader(self):
+        vert_source = open(os.path.join(SHADERS_FOLDER, 'VertexBufferedRenderer.vert')).read()
+        frag_source = open(os.path.join(SHADERS_FOLDER, 'VertexBufferedRenderer.frag')).read()
+
+        vert_shader = pyglet.graphics.shader.Shader(vert_source, 'vertex')
+        frag_shader = pyglet.graphics.shader.Shader(frag_source, 'fragment')
+        self._shader_program = pyglet.graphics.shader.ShaderProgram(vert_shader, frag_shader)
+
+
+    def _allocate_vbo_vao(self):
+        vertex_count = len(self._tilemap) * 6
+        # for each tile
+        # there are 6 vertices (two triangles, each with 3 vertices)
+
+        self._vertex_list = self._shader_program.vertex_list(vertex_count, pyglet.gl.GL_TRIANGLES)
+
 
     def recalculate(self):
-        return
+        self._update_vbo()
 
-    def draw(self):
 
+    def _update_vbo(self):
+        float_count = len(self._vertex_list.aPosition)
+
+        position_data = [0.0] * float_count
+        texcoord_data = [0.0] * float_count
+
+        i = 0
         for x in range(TILEMAP_N_COLS):
             for y in range(TILEMAP_N_ROWS):
                 tile = self._tilemap[y, x]
-                image_tile = self._image_grid[tile]
 
-                x_ = x * TEXTURE_TILE_SIZE_PX
-                y_ = (y + 1) * TEXTURE_TILE_SIZE_PX
+                # Calculate normalized texture coordinates. Use padding to mitigate the lines-between tiles bug
+                # which is caused by the lack of tile margins in the texture atlas.
+                tx0 = (tile %  TEXTURE_N_TILES_PER_ROW) * TEXTURE_TILE_SIZE_NORMALIZED + TEXTURE_TILE_PADDING
+                ty0 = (tile // TEXTURE_N_TILES_PER_ROW) * TEXTURE_TILE_SIZE_NORMALIZED + TEXTURE_TILE_PADDING
+                tSize = TEXTURE_TILE_SIZE_NORMALIZED - TEXTURE_TILE_PADDING * 2
 
-                image_tile.blit(x_, y_, width = TEXTURE_TILE_SIZE_PX, height = TEXTURE_TILE_SIZE_PX)
+                # vertex 0 (top left)
+                position_data[i + 0] = x # position x
+                position_data[i + 1] = y # position y
+                texcoord_data[i + 0] = tx0 # texcoord x
+                texcoord_data[i + 1] = ty0 # texcoord y
+                i += 2
+
+                # vertex 1 (top right)
+                position_data[i + 0] = x + 1 # position x
+                position_data[i + 1] = y # position y
+                texcoord_data[i + 0] = tx0 + tSize # texcoord x
+                texcoord_data[i + 1] = ty0 # texcoord y
+                i += 2
+
+                # vertex 2 (bottom left)
+                position_data[i + 0] = x # position x
+                position_data[i + 1] = y + 1 # position y
+                texcoord_data[i + 0] = tx0 # texcoord x
+                texcoord_data[i + 1] = ty0 + tSize # texcoord y
+                i += 2
+
+                # vertex 3 (top right)
+                position_data[i + 0] = x + 1 # position x
+                position_data[i + 1] = y # position y
+                texcoord_data[i + 0] = tx0 + tSize # texcoord x
+                texcoord_data[i + 1] = ty0 # texcoord y
+                i += 2
+
+                # vertex 4 (bottom left)
+                position_data[i + 0] = x # position x
+                position_data[i + 1] = y + 1 # position y
+                texcoord_data[i + 0] = tx0 # texcoord x
+                texcoord_data[i + 1] = ty0 + tSize # texcoord y
+                i += 2
+
+                # vertex 5 (bottom right)
+                position_data[i + 0] = x + 1 # position x
+                position_data[i + 1] = y + 1 # position y
+                texcoord_data[i + 0] = tx0 + tSize # texcoord x
+                texcoord_data[i + 1] = ty0 + tSize # texcoord y
+                i += 2
+
+        self._vertex_list.aPosition[:] = position_data
+        self._vertex_list.aTexCoord[:] = texcoord_data
+
+
+    def draw(self):
+        self._shader_program.use()
+        pyglet.gl.glBindTexture(pyglet.gl.GL_TEXTURE_2D, self._texture_id)
+
+        projection = self._get_projection_matrix()
+        self._shader_program.uniforms['projection'] = projection
+
+        self._vertex_list.draw(pyglet.gl.GL_TRIANGLES)
+        self._shader_program.stop()

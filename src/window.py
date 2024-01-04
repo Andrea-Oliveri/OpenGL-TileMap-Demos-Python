@@ -3,7 +3,7 @@
 import pyglet
 
 from src.tilemap import TileMap
-from src.renderer import VertexBufferedRenderer, GeomBufferedRenderer, NaiveInstantaneousRenderer
+from src.renderer import VertexBufferedRenderer, GeomBufferedRenderer, NaiveInstantaneousRenderer, Pyglet_VertexBufferedRenderer
 
 from src.constants import WINDOW_MINIMUM_SIZE
 
@@ -20,7 +20,7 @@ class Window(pyglet.window.Window):
         self._tilemap.random_fill()
 
         self._renderer = None
-        self.set_renderer(GeomBufferedRenderer)
+        self.set_renderer(Pyglet_VertexBufferedRenderer) #GeomBufferedRenderer)
 
 
     def _init_gl(self):
@@ -55,7 +55,7 @@ class Window(pyglet.window.Window):
             self._renderer.recalculate()
             return
         
-        cls_list = [GeomBufferedRenderer, VertexBufferedRenderer, NaiveInstantaneousRenderer]
+        cls_list = [GeomBufferedRenderer, VertexBufferedRenderer, NaiveInstantaneousRenderer, Pyglet_VertexBufferedRenderer]
         i, = [idx for idx, e in enumerate(cls_list) if isinstance(self._renderer, e)]
         i = (i+1) % len(cls_list)
         

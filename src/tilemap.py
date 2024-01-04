@@ -54,9 +54,9 @@ class TileMap:
                 self[row, col] = randint(0, self._max_value)
 
     @property
-    def texture_id(self):
-        return self._texture.id
-    
+    def texture(self):
+        return self._texture
+
     @property
     def map(self):
         return self._map
