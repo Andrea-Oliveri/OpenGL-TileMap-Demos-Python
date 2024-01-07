@@ -1,12 +1,11 @@
 import pyglet
 pyglet.options['shadow_window'] = False
 
+
 import cProfile
 from datetime import datetime
 
 from src.window import Window
-
-
 
 
 pr = cProfile.Profile()

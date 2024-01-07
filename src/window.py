@@ -20,7 +20,8 @@ class Window(pyglet.window.Window):
         self._tilemap.random_fill()
 
         self._renderer = None
-        self.set_renderer(Pyglet_VertexBufferedRenderer) #GeomBufferedRenderer)
+        self._renderers_cls_list = [Pyglet_VertexBufferedRenderer, GeomBufferedRenderer, VertexBufferedRenderer, NaiveInstantaneousRenderer ]
+        self.set_renderer(self._renderers_cls_list[0])
 
 
     def _init_gl(self):
@@ -55,11 +56,10 @@ class Window(pyglet.window.Window):
             self._renderer.recalculate()
             return
         
-        cls_list = [GeomBufferedRenderer, VertexBufferedRenderer, NaiveInstantaneousRenderer, Pyglet_VertexBufferedRenderer]
-        i, = [idx for idx, e in enumerate(cls_list) if isinstance(self._renderer, e)]
-        i = (i+1) % len(cls_list)
+        i, = [idx for idx, e in enumerate(self._renderers_cls_list) if isinstance(self._renderer, e)]
+        i = (i+1) % len(self._renderers_cls_list)
         
-        self.set_renderer(cls_list[i])
+        self.set_renderer(self._renderers_cls_list[i])
             
 
     def set_renderer(self, cls):

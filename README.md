@@ -8,6 +8,8 @@ As a result, it provides Python code to render a tilemap much faster than what w
 
 Vertex-buffered rendering and Geometry Shader Rendering in particular are implemented in [src/renderer.py](src/renderer.py)
 
+Vertex-buffered rendering is implemented both using native OpenGL calls and using Pyglet's `ShaderProgram` class.
+
 
 ## Topline Profiler Results
 On a simple benchmark with a TileMap composed of 36 rows and 28 columns, the following results were obtained.
@@ -17,6 +19,7 @@ Reported are the cumulative time, per call, in seconds:
 |-------------------|------------|-------------------|
 | _Geometry Shader_ | 0.0002031  | 0.0001807         |
 | _Vertex-Buffered_ | 0.0001621  | 0.006053          |
+| _Vertex-Buffered (Pyglet)_ | 0.0004581  | 0.003455          |
 | _Instantaneous_   | 0.2491     | 0                 |
 
 
@@ -27,6 +30,7 @@ For more detailed explainations on each renderer, please refer to the original r
 
 To learn more about OpenGL and shaders, I found very helpful [Learn OpenGL](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwj2wZOgs7KDAxV-7rsIHe3kAmIQFnoECAkQAQ&url=https%3A%2F%2Flearnopengl.com%2F&usg=AOvVaw1PZwEycHmOOF22dKz8geD1&opi=89978449).
 
+To learn more about Pyglet, please reference their [documentation](https://pyglet.readthedocs.io/en/latest/) and their [Github repository](https://github.com/pyglet/pyglet). 
 
 ## Repository Structure
 

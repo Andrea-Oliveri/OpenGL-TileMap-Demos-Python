@@ -14,6 +14,12 @@ from src.constants import (TEXTURE_TILE_SIZE_PX,
 
 
 
+
+
+
+
+
+
 class _AbstractRenderer(ABC):
     @abstractmethod
     def __init__(self, tilemap):
@@ -216,7 +222,6 @@ class VertexBufferedRenderer(_OpenGLRenderer):
 
 
     def _update_vbo(self):
-        pyglet.gl.glBindBuffer(pyglet.gl.GL_ARRAY_BUFFER, self._vbo_handle)
 
         float_count = len(self._tilemap) * 6 * 2 * 2
         # for each tile
@@ -282,6 +287,7 @@ class VertexBufferedRenderer(_OpenGLRenderer):
         l = len(vertex_data)
         vertex_data = (ctypes.c_float * l)(*vertex_data)
 
+        pyglet.gl.glBindBuffer(pyglet.gl.GL_ARRAY_BUFFER, self._vbo_handle)
         pyglet.gl.glBufferData(pyglet.gl.GL_ARRAY_BUFFER, l * ctypes.sizeof(ctypes.c_float), vertex_data, pyglet.gl.GL_STATIC_DRAW)
 
 
@@ -344,13 +350,13 @@ class GeomBufferedRenderer(_OpenGLRenderer):
         
         
     def _update_vbo(self):
-        pyglet.gl.glBindBuffer(pyglet.gl.GL_ARRAY_BUFFER, self._vbo_handle)
 
         vertex_data = self._tilemap.map
 
         l = len(vertex_data)
         vertex_data = (ctypes.c_uint32 * l)(*vertex_data)
 
+        pyglet.gl.glBindBuffer(pyglet.gl.GL_ARRAY_BUFFER, self._vbo_handle)
         pyglet.gl.glBufferData(pyglet.gl.GL_ARRAY_BUFFER, l * ctypes.sizeof(ctypes.c_uint32), vertex_data, pyglet.gl.GL_STATIC_DRAW)
 
 
@@ -366,6 +372,7 @@ class GeomBufferedRenderer(_OpenGLRenderer):
 
 
 
+
 class Pyglet_VertexBufferedRenderer(_AbstractRenderer):
     def __init__(self, tilemap):
         self._tilemap = tilemap
@@ -375,7 +382,7 @@ class Pyglet_VertexBufferedRenderer(_AbstractRenderer):
         self._vertex_list = None
 
         self._create_shader()
-        self._allocate_vbo_vao()
+        self._allocate_vertex_list()
         self.recalculate()
         
 
@@ -388,7 +395,7 @@ class Pyglet_VertexBufferedRenderer(_AbstractRenderer):
         self._shader_program = pyglet.graphics.shader.ShaderProgram(vert_shader, frag_shader)
 
 
-    def _allocate_vbo_vao(self):
+    def _allocate_vertex_list(self):
         vertex_count = len(self._tilemap) * 6
         # for each tile
         # there are 6 vertices (two triangles, each with 3 vertices)
@@ -397,10 +404,6 @@ class Pyglet_VertexBufferedRenderer(_AbstractRenderer):
 
 
     def recalculate(self):
-        self._update_vbo()
-
-
-    def _update_vbo(self):
         float_count = len(self._vertex_list.aPosition)
 
         position_data = [0.0] * float_count
@@ -468,7 +471,8 @@ class Pyglet_VertexBufferedRenderer(_AbstractRenderer):
         pyglet.gl.glBindTexture(pyglet.gl.GL_TEXTURE_2D, self._texture_id)
 
         projection = self._get_projection_matrix()
-        self._shader_program.uniforms['projection'] = projection
+
+        self._shader_program.uniforms['projection'].set(projection)
 
         self._vertex_list.draw(pyglet.gl.GL_TRIANGLES)
         self._shader_program.stop()
