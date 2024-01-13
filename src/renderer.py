@@ -471,8 +471,7 @@ class Pyglet_VertexBufferedRenderer(_AbstractRenderer):
         pyglet.gl.glBindTexture(pyglet.gl.GL_TEXTURE_2D, self._texture_id)
 
         projection = self._get_projection_matrix()
-
-        self._shader_program.uniforms['projection'].set(projection)
+        self._shader_program['projection'] = projection
 
         self._vertex_list.draw(pyglet.gl.GL_TRIANGLES)
         self._shader_program.stop()
